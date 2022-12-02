@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -49,6 +50,19 @@ class PilotNet():
         return model
 
     def load_model(self, path_to_model: str):
+        try:
+            model = tf.keras.models.load_model(path_to_model)
+        except IOError:
+            print("Failed to load model")
+            SystemExit()
+
+        return model
+
+    def predict(self, data: np.ndarray):
+        return self.model.predict(data)
+
+    def train(self, model_name: str, data, epochs: int = 30, steps_per_epoch: int = 10, steps_val: int = 10, batch_size: int = 64):
+        # self.model.fit()
         pass
 
 
