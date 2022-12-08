@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 import tensorflow as tf
 
@@ -17,7 +19,7 @@ class PilotNet():
     def build_model(self):
         inputs = tf.keras.Input(shape=(self.image_height, self.image_width, 3))
 
-        img_normalized = tf.keras.layers.Lambda(lambda x: x / 127.5-1.0, name="Normalization")(inputs)
+        img_normalized = tf.keras.layers.BatchNormalization()(inputs)
         # Convolutional layers
         x = tf.keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation="relu")(img_normalized)
         x = tf.keras.layers.Conv2D(filters=36, kernel_size=(5, 5), strides=(2, 2), activation="relu")(x)
@@ -60,15 +62,27 @@ class PilotNet():
 
         return model
 
-    def predict(self, data: np.ndarray):
-        return self.model.predict(data)
+    def predict(self, data: np.ndarray, batch_size: int = 1):
+        return self.model.predict(data, batch_size=batch_size)
 
     def train(self, model_name: str, data_class: data.Data, epochs: int = 30, steps_per_epoch: int = 10, steps_val: int = 10, batch_size: int = 64):
         # self.model.fit()
         x_train, y_train = data_class.get_training_data()
         x_test, y_test = data_class.get_test_data()
 
-        self.model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, steps_per_epoch=steps_per_epoch, validation_split=0.2, validation_steps=steps_val)
+        # Setting tensorboard
+        log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+        self.model.fit(
+            x_train,
+            y_train,
+            batch_size=batch_size,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            validation_split=0.2,
+            validation_steps=steps_val,
+            callbacks=[tensorboard_callback])
 
         model_stats = self.model.evaluate(x_test, y_test)
 
@@ -78,6 +92,6 @@ class PilotNet():
 
 
 if __name__ == "__main__":
-    data_class = data.Data((66, 200))
-    model = PilotNet(66, 200)
-    stats = model.train("first_test", data_class)
+    data_class = data.Data((200, 66))
+    model = PilotNet(200, 66)
+    stats = model.train("fourth_test_1000_epochs_batch_norm", data_class, epochs=1000)
