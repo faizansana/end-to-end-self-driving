@@ -21,7 +21,7 @@ class DataGenerator(object):
         # Make world synchronous
         self.setup_sim_world(world)
 
-        self.directory = f"recordings/{datetime.datetime.now().strftime('%Y-%m-%d@%H.%M.%S' if os.name is 'nt' else '%Y-%m-%d@%H:%M:%S')}"
+        self.directory = f"recordings/{datetime.datetime.now().strftime('%Y-%m-%d@%H.%M.%S' if os.name == 'nt' else '%Y-%m-%d@%H:%M:%S')}"
         self.start(self.required_time)
 
     def setup_sim_world(self, world):
@@ -106,7 +106,6 @@ class DataGenerator(object):
                 print("Elapsed time:", time_elapsed.seconds)
                 print("Total Elapsed time:", total_time_elapsed.seconds)
                 self.world.tick()
-
 
         except KeyboardInterrupt:
             print("Keyboard Exit!")
