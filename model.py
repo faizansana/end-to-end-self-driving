@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
+import data
 
 class PilotNet():
 
@@ -16,13 +17,14 @@ class PilotNet():
     def build_model(self):
         inputs = tf.keras.Input(shape=(self.image_height, self.image_width, 3))
 
+        img_normalized = tf.keras.layers.Lambda(lambda x: x / 127.5-1.0, name="Normalization")(inputs)
         # Convolutional layers
-        x = tf.keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation="relu")(inputs)
+        x = tf.keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation="relu")(img_normalized)
         x = tf.keras.layers.Conv2D(filters=36, kernel_size=(5, 5), strides=(2, 2), activation="relu")(x)
         x = tf.keras.layers.Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), activation="relu")(x)
         x = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation="relu")(x)
         x = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation="relu")(x)
-
+        x = tf.keras.layers.Dropout(rate=0.5)(x)
         # Flatten
         x = tf.keras.layers.Flatten()(x)
 
@@ -61,10 +63,21 @@ class PilotNet():
     def predict(self, data: np.ndarray):
         return self.model.predict(data)
 
-    def train(self, model_name: str, data, epochs: int = 30, steps_per_epoch: int = 10, steps_val: int = 10, batch_size: int = 64):
+    def train(self, model_name: str, data_class: data.Data, epochs: int = 30, steps_per_epoch: int = 10, steps_val: int = 10, batch_size: int = 64):
         # self.model.fit()
-        pass
+        x_train, y_train = data_class.get_training_data()
+        x_test, y_test = data_class.get_test_data()
+
+        self.model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, steps_per_epoch=steps_per_epoch, validation_split=0.2, validation_steps=steps_val)
+
+        model_stats = self.model.evaluate(x_test, y_test)
+
+        self.model.save(f"./models/{model_name}")
+
+        return model_stats
 
 
 if __name__ == "__main__":
+    data_class = data.Data((66, 200))
     model = PilotNet(66, 200)
+    stats = model.train("first_test", data_class)
