@@ -1,6 +1,5 @@
 import datetime
 import os
-from typing import Tuple
 
 import carla
 import cv2
@@ -15,15 +14,19 @@ class DataGenerator(object):
         self.img_width = img_width
         self.img_height = img_height
         self.vehicle = None
-        self.interrupt = False
+        # self.interrupt = False
 
         self.directory = f"recordings/{datetime.datetime.now().strftime('%Y-%m-%d@%H.%M.%S' if os.name is 'nt' else '%Y-%m-%d@%H:%M:%S')}"
         self.start(time)
 
-    def record(self, image):
+    def record(self, image, display_image=False):
         control = self.vehicle.get_control()
         image.save_to_disk(f"{self.directory}/{[int((datetime.datetime.now() - self.start_time).total_seconds()), control.steer, control.throttle, control.brake]}.png")
 
+        if display_image:
+            self.display_image(image)
+
+    def display_image(self, image):
         display_image = np.array(image.raw_data)
         # Convert to RGBA
         display_image = display_image.reshape((self.img_height, self.img_width, 4))
@@ -32,10 +35,11 @@ class DataGenerator(object):
 
         cv2.imshow(winname="Display", mat=display_image)
 
-        if cv2.waitKey(5) == 27:
-            self.interrupt = True
+        # if cv2.waitKey(5) == 27:
+        #     self.interrupt = True
+        cv2.waitKey(2)
 
-    def start(self, time: int):
+    def start(self, minutes: int):
 
         # Make all traffic lights green
         traffic_lights = world.get_actors().filter('traffic.traffic_light')
@@ -67,11 +71,17 @@ class DataGenerator(object):
 
         try:
 
+            self.start_time = datetime.datetime.now()
+            required_time = datetime.timedelta(minutes=minutes)
+            time_elapsed = datetime.datetime.now() - self.start_time
+
             while True:
-                if self.interrupt:
+                if time_elapsed >= required_time:
                     self.stop()
                     break
 
+                time_elapsed = datetime.datetime.now() - self.start_time
+                print("Elapsed time:", time_elapsed.seconds)
                 self.world.tick()
         except KeyboardInterrupt:
             print("Keyboard Exit!")
@@ -87,4 +97,4 @@ class DataGenerator(object):
 if __name__ == "__main__":
     client = carla.Client("localhost", 2000)
     world = client.get_world()
-    collector = DataGenerator(world, 10)
+    collector = DataGenerator(world, 1)
