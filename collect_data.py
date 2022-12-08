@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import os
 
@@ -119,6 +120,12 @@ class DataGenerator(object):
 
 
 if __name__ == "__main__":
-    client = carla.Client("localhost", 2000)
+    parser = argparse.ArgumentParser(prog="Generate CARLA Data")
+    parser.add_argument("time_in_minutes", type=int, help="The number of minutes you want to generate data for")
+    parser.add_argument("--carla-ip", type=str, default="localhost", help="IP address of the CARLA server. Defaults to localhost.")
+    parser.add_argument("--carla-port", type=int, default=2000, help="Port of the CARLA service. Defaults to 2000.")
+    args = parser.parse_args()
+
+    client = carla.Client(args.carla_ip, args.carla_port)
     world = client.get_world()
-    collector = DataGenerator(world, 30)
+    collector = DataGenerator(world, args.time_in_minutes)
