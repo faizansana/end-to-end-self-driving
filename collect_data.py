@@ -14,13 +14,28 @@ class DataGenerator(object):
         self.img_width = img_width
         self.img_height = img_height
         self.vehicle = None
+        self.time_elapsed = None
         # self.interrupt = False
+        self.start_time = datetime.datetime.now()
+        self.required_time = datetime.timedelta(minutes=time)
+        # Make world synchronous
+        self.setup_sim_world(world)
 
         self.directory = f"recordings/{datetime.datetime.now().strftime('%Y-%m-%d@%H.%M.%S' if os.name is 'nt' else '%Y-%m-%d@%H:%M:%S')}"
-        self.start(time)
+        self.start(self.required_time)
+
+    def setup_sim_world(self, world):
+        world.apply_settings(carla.WorldSettings(
+            synchronous_mode=True,
+            fixed_delta_seconds=0.05
+        ))
 
     def record(self, image, display_image=False):
-        control = self.vehicle.get_control()
+        try:
+            control = self.vehicle.get_control()
+        except RuntimeError:
+            print("Getting new actor")
+            self.start(self.required_time - self.time_elapsed)
         image.save_to_disk(f"{self.directory}/{[int((datetime.datetime.now() - self.start_time).total_seconds()), control.steer, control.throttle, control.brake]}.png")
 
         if display_image:
@@ -39,7 +54,27 @@ class DataGenerator(object):
         #     self.interrupt = True
         cv2.waitKey(2)
 
-    def start(self, minutes: int):
+    def spawn_vehicle(self):
+        # get a list of spawn points & vehicles then randomly choose from one to use
+        vehicle_blueprints = self.world.get_blueprint_library().filter("*vehicle*")
+        spawn_points = self.world.get_map().get_spawn_points()
+        self.vehicle = self.world.spawn_actor(np.random.choice(vehicle_blueprints), np.random.choice(spawn_points))
+
+    def spawn_camera(self):
+        camera_init_trans = carla.Transform(carla.Location(x=1.5, z=2.4))
+        camera_blueprint = self.world.get_blueprint_library().find("sensor.camera.rgb")
+        camera_blueprint.set_attribute("image_size_x", str(self.img_width))
+        camera_blueprint.set_attribute("image_size_y", str(self.img_height))
+        camera_blueprint.set_attribute("fov", "110")  # sets field of view (FOV)
+
+        # Attach camera to vehicle and start recording
+        self.camera = self.world.spawn_actor(camera_blueprint, camera_init_trans, attach_to=self.vehicle)
+        self.camera.listen(lambda image: self.record(image))
+
+        # Set Vehicle in Autopilot Mode
+        self.vehicle.set_autopilot(True)
+
+    def start(self, required_time: datetime.timedelta):
 
         # Make all traffic lights green
         traffic_lights = world.get_actors().filter('traffic.traffic_light')
@@ -47,42 +82,32 @@ class DataGenerator(object):
             traffic_light.set_state(carla.TrafficLightState.Green)
             traffic_light.freeze(True)
 
-        # get a list of spawn points & vehicles then randomly choose from one to use
         print("Spawning vehicle")
-        vehicle_blueprints = self.world.get_blueprint_library().filter("*vehicle*")
-        spawn_points = self.world.get_map().get_spawn_points()
-        self.vehicle = self.world.spawn_actor(np.random.choice(vehicle_blueprints), np.random.choice(spawn_points))
+        self.spawn_vehicle()
         print('OK')
 
         print('Spawning camera and attaching to vehicle')
-        camera_init_trans = carla.Transform(carla.Location(x=1.5, z=2.4))
-        camera_blueprint = self.world.get_blueprint_library().find("sensor.camera.rgb")
-        camera_blueprint.set_attribute("image_size_x", str(self.img_width))
-        camera_blueprint.set_attribute("image_size_y", str(self.img_height))
-        camera_blueprint.set_attribute("fov", "110")  # sets field of view (FOV)
+        self.spawn_camera()
         print("OK")
 
-        # Attach camera to vehicle and start recording
-        self.camera = self.world.spawn_actor(camera_blueprint, camera_init_trans, attach_to=self.vehicle)
-        self.camera.listen(lambda image: self.record(image))
-
-        # autopilot obviously
-        self.vehicle.set_autopilot(True)
-
         try:
-
-            self.start_time = datetime.datetime.now()
-            required_time = datetime.timedelta(minutes=minutes)
-            time_elapsed = datetime.datetime.now() - self.start_time
+            start_time = datetime.datetime.now()
+            time_elapsed = datetime.datetime.now() - start_time
 
             while True:
                 if time_elapsed >= required_time:
                     self.stop()
                     break
 
-                time_elapsed = datetime.datetime.now() - self.start_time
+                time_elapsed = datetime.datetime.now() - start_time
+                total_time_elapsed = datetime.datetime.now() - self.start_time
+                # To call it from reward function
+                self.time_elapsed = time_elapsed
                 print("Elapsed time:", time_elapsed.seconds)
+                print("Total Elapsed time:", total_time_elapsed.seconds)
                 self.world.tick()
+
+
         except KeyboardInterrupt:
             print("Keyboard Exit!")
             self.stop()
@@ -97,4 +122,4 @@ class DataGenerator(object):
 if __name__ == "__main__":
     client = carla.Client("localhost", 2000)
     world = client.get_world()
-    collector = DataGenerator(world, 1)
+    collector = DataGenerator(world, 30)
