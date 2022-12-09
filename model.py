@@ -104,8 +104,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train PilotNet model")
     parser.add_argument("--image-width", type=int, default=200, help="Input image width")
     parser.add_argument("--image-height", type=int, default=66, help="Input image height")
-    parser.add_argument("--model_name", type=str, default="new_trained_model", help="Name of new trained model")
-    parser.add_argument("--model_path", type=str, default="", help="Path of model")
+    parser.add_argument("--model-name", type=str, default="new_trained_model", help="Name of new trained model")
+    parser.add_argument("--model-path", type=str, default="", help="Path of model")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
     args = parser.parse_args()
 
