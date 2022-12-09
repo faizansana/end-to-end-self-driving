@@ -26,29 +26,35 @@ class PilotNet():
         x = tf.keras.layers.Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), activation="relu")(x)
         x = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation="relu")(x)
         x = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation="relu")(x)
-        x = tf.keras.layers.Dropout(rate=0.5)(x)
         # Flatten
         x = tf.keras.layers.Flatten()(x)
 
         # Dense Layers
         x = tf.keras.layers.Dense(units=100, activation="relu")(x)
+        x = tf.keras.layers.Dropout(rate=0.1)(x)
         x = tf.keras.layers.Dense(units=50, activation="relu")(x)
+        x = tf.keras.layers.Dropout(rate=0.1)(x)
         x = tf.keras.layers.Dense(units=10, activation="relu")(x)
 
         # Modified
         steering_angle = tf.keras.layers.Dense(units=1)(x)
-        steering_angle = tf.keras.layers.Lambda(lambda X: tf.multiply(tf.atan(X), 2), name="steering_angle")(steering_angle)
+        # steering_angle = tf.keras.layers.Lambda(lambda X: tf.multiply(tf.atan(X), 2), name="steering_angle")(steering_angle)
 
-        throttle_press = tf.keras.layers.Dense(units=1)(x)
-        throttle_press = tf.keras.layers.Lambda(lambda X: tf.multiply(tf.atan(X), 2), name="throttle_press")(throttle_press)
+        # throttle_press = tf.keras.layers.Dense(units=1)(x)
+        # throttle_press = tf.keras.layers.Lambda(lambda X: tf.multiply(tf.atan(X), 2), name="throttle_press")(throttle_press)
 
-        brake_pressure = tf.keras.layers.Dense(units=1, activation="linear")(x)
-        brake_pressure = tf.keras.layers.Lambda(lambda X: tf.multiply(tf.atan(X), 2), name="brake_pressure")(brake_pressure)
+        # brake_pressure = tf.keras.layers.Dense(units=1)(x)
+        # brake_pressure = tf.keras.layers.Lambda(lambda X: tf.multiply(tf.atan(X), 2), name="brake_pressure")(brake_pressure)
 
-        model = tf.keras.Model(inputs=[inputs], outputs=[steering_angle, throttle_press, brake_pressure])
+        # model = tf.keras.Model(inputs=[inputs], outputs=[steering_angle, throttle_press, brake_pressure])
+        model = tf.keras.Model(inputs=[inputs], outputs=[steering_angle])
+
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(1e-4, decay_steps=10000, decay_rate=0.9)
+
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-            loss={"steering_angle": "mse", "throttle_press": "mse", "brake_pressure": "mse"}
+            optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule),
+            # loss={"steering_angle": "mse", "throttle_press": "mse", "brake_pressure": "mse"}
+            loss="mse"
         )
         model.summary()
         return model
@@ -73,6 +79,8 @@ class PilotNet():
         # Setting tensorboard
         log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        # Setting checkpoint
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(f"./models/{model_name}", monitor="loss", verbose=1, save_best_only=True)
 
         self.model.fit(
             x_train,
@@ -82,11 +90,9 @@ class PilotNet():
             steps_per_epoch=steps_per_epoch,
             validation_split=0.2,
             validation_steps=steps_val,
-            callbacks=[tensorboard_callback])
+            callbacks=[tensorboard_callback, checkpoint])
 
         model_stats = self.model.evaluate(x_test, y_test)
-
-        self.model.save(f"./models/{model_name}")
 
         return model_stats
 
