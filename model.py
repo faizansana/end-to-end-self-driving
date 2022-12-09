@@ -1,9 +1,11 @@
+import argparse
 import datetime
 
 import numpy as np
 import tensorflow as tf
 
 import data
+
 
 class PilotNet():
 
@@ -54,7 +56,8 @@ class PilotNet():
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule),
             # loss={"steering_angle": "mse", "throttle_press": "mse", "brake_pressure": "mse"}
-            loss="mse"
+            loss="mse",
+            metrics="mae"
         )
         model.summary()
         return model
@@ -98,6 +101,21 @@ class PilotNet():
 
 
 if __name__ == "__main__":
-    data_class = data.Data((200, 66))
-    model = PilotNet(200, 66)
-    stats = model.train("fourth_test_1000_epochs_batch_norm", data_class, epochs=1000)
+    parser = argparse.ArgumentParser("Train PilotNet model")
+    parser.add_argument("--image-width", type=int, default=200, help="Input image width")
+    parser.add_argument("--image-height", type=int, default=66, help="Input image height")
+    parser.add_argument("--model_name", type=str, default="new_trained_model", help="Name of new trained model")
+    parser.add_argument("--model_path", type=str, default="", help="Path of model")
+    parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
+    args = parser.parse_args()
+
+    image_width = args.image_width
+    image_height = args.image_height
+
+    print("Loading data")
+    data_class = data.Data((image_width, image_height))
+    print("Finished loading data")
+    model = PilotNet(image_width, image_height, path_to_model=args.model_path)
+
+    if args.model_path == "":
+        stats = model.train("fourth_test_1000_epochs_batch_norm", data_class, epochs=args.epochs)
