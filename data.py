@@ -48,12 +48,14 @@ class Data(object):
 
     def get_training_data(self):
         image_array = np.array([frame.image for frame in self.training_data])
-        control_array = np.array([(frame.steering, frame.throttle, frame.brake) for frame in self.training_data])
+        # control_array = np.array([(frame.steering, frame.throttle, frame.brake) for frame in self.training_data])
+        control_array = np.array([frame.steering for frame in self.training_data])
         return image_array, control_array
 
     def get_test_data(self):
         image_array = np.array([frame.image for frame in self.test_data])
-        control_array = np.array([(frame.steering, frame.throttle, frame.brake) for frame in self.test_data])
+        # control_array = np.array([(frame.steering, frame.throttle, frame.brake) for frame in self.test_data])
+        control_array = np.array([frame.steering for frame in self.test_data])
         return image_array, control_array
 
 if __name__ == "__main__":
