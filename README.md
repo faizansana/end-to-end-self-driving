@@ -1,4 +1,4 @@
-# CS686 Project: End to End Learning of Self Driving Vehicle in Urban Environments
+# End to End Learning of Self Driving Vehicle in Urban Environments
 
 This repository contains the code for the project submitted for CS686. The architecture of the neural network is based off the architecture created by NVIDIA in [End to End Learning for Self-Driving Cars](https://arxiv.org/pdf/1604.07316.pdf) famously known as PilotNet.
 
